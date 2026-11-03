@@ -19,7 +19,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev python3
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev python3 ccache
       - name: Checkout creator-compatible Linaro 4.9.4
         uses: actions/checkout@v4
         with:
@@ -27,10 +27,36 @@ jobs:
           ref: 0d26f997569c21965380406733378e3546279f18
           path: .toolchains/linaro
           persist-credentials: false
+      - name: Restore compiler cache
+        id: ccache
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 5
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-${{ runner.arch }}-g930x-linaro494-0d26f99-v1-${{ hashFiles('arch/arm64/configs/*defconfig', 'scripts/ci/build-g930x.sh', 'Makefile') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-g930x-linaro494-0d26f99-v1-${{ hashFiles('arch/arm64/configs/*defconfig', 'scripts/ci/build-g930x.sh', 'Makefile') }}-
+            ${{ runner.os }}-${{ runner.arch }}-g930x-linaro494-0d26f99-v1-
       - name: Build herolte and package developer installer plus AnyKernel3
         env:
           CROSS_COMPILE: ${{ github.workspace }}/.toolchains/linaro/bin/aarch64-linux-gnu-
         run: bash scripts/ci/build-g930x.sh
+      - name: Report compiler cache statistics
+        if: always()
+        run: |
+          mkdir -p artifacts
+          if command -v ccache >/dev/null; then
+            CCACHE_DIR="$GITHUB_WORKSPACE/.ccache" ccache --show-stats | tee artifacts/ccache-stats.txt
+          fi
+      - name: Save compiler cache
+        if: always() && !cancelled() && steps.ccache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ${{ steps.ccache.outputs.cache-primary-key }}
       - name: Upload flashable ZIPs, config, hashes and build log
         if: always()
         uses: actions/upload-artifact@v4

@@ -51,7 +51,7 @@ CROSS_COMPILE=/path/to/linaro/bin/aarch64-linux-gnu- bash scripts/ci/build-g930x
 ```
 
 Python 3, make, gcc, bc, flex, bison, OpenSSL and ELF development headers are
-required. Dependencies are pinned in the workflow and packager. KernelSU and
+required (plus ccache, or set `USE_CCACHE=0`). Dependencies are pinned in the workflow and packager. KernelSU and
 WireGuard no longer download or replace source from inside Kbuild parsing.
 
 ## Sources and compatibility changes
@@ -84,3 +84,21 @@ Next legacy source: https://github.com/KernelSU-Next/KernelSU-Next/tree/legacy
 The optional Next `nuke_ext4_sysfs` ioctl returns `-EOPNOTSUPP` on this 3.18
 tree; its standalone ext4 unregister helper is absent. Root and module mounting
 do not require it. SUSFS is not integrated in this build.
+
+## GitHub compiler cache
+
+Install ccache explicitly and cache only `.ccache`, not source, compiler binaries,
+or credentials. Restore/save use GitHub's official `actions/cache` split actions.
+Immutable keys identify OS, architecture, device, compiler revision, configuration
+hash and source commit. Prefix restore keys seed a new commit from prior builds;
+ccache still validates every compilation with compiler-content checks. Save runs
+on non-cancelled failures too, so a late build/release failure does not discard
+useful compiled objects. A 2 GiB compressed cache limits storage use. Statistics
+are uploaded with artifacts. First runs and evicted/branch-inaccessible caches
+are expected misses; builds work without a downloaded cache.
+
+Kbuild wraps only C/C++ compilation with ccache: assembler, linker, archiver,
+symbol and objcopy tools run directly, and CPP is wrapped only once. The local
+build script requires ccache by default; `USE_CCACHE=0` explicitly disables it.
+
+Reference: https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching

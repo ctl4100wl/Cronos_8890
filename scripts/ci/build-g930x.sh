@@ -31,7 +31,19 @@ if [[ ! -f net/wireguard/Kconfig ]]; then
     cp -a "$wg/src/." net/wireguard/
     rm -rf "$wg"
 fi
-make_args=(ARCH=arm64 "CROSS_COMPILE=$CROSS_COMPILE" CCACHE= 'HOSTCFLAGS=-O2 -fcommon')
+cache_prefix=
+if [[ "${USE_CCACHE:-1}" == 1 ]]; then
+    cache_prefix=$(command -v ccache) || { echo 'Install ccache or set USE_CCACHE=0' >&2; exit 1; }
+    export CCACHE_DIR="${CCACHE_DIR:-$PWD/.ccache}"
+    export CCACHE_BASEDIR="$PWD"
+    export CCACHE_COMPILERCHECK=content
+    export CCACHE_NOHASHDIR=true
+    mkdir -p "$CCACHE_DIR"
+    ccache --max-size=2G
+    ccache --set-config=compression=true
+    ccache --zero-stats
+fi
+make_args=(ARCH=arm64 "CROSS_COMPILE=$CROSS_COMPILE" "CCACHE=$cache_prefix" 'HOSTCFLAGS=-O2 -fcommon')
 make "${make_args[@]}" cronos_g930x_defconfig
 for option in CONFIG_KSU=y CONFIG_KSU_MANUAL_HOOK=y CONFIG_MODEL_HEROLTE=y CONFIG_HALL_EVENT_REVERSE=y; do
     grep -qx "$option" .config || { echo "Missing $option" >&2; exit 1; }
