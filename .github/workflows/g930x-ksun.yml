@@ -1,0 +1,61 @@
+name: Cronos G930X KernelSU Next
+on:
+  push:
+    branches: [cronos_ksu, 'codex/g930x-ksun']
+  pull_request:
+    branches: [cronos_ksu]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: g930x-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev python3
+      - name: Checkout creator-compatible Linaro 4.9.4
+        uses: actions/checkout@v4
+        with:
+          repository: ryan-andri/aarch64-linaro-linux-gnu-4.9
+          ref: 0d26f997569c21965380406733378e3546279f18
+          path: .toolchains/linaro
+          persist-credentials: false
+      - name: Build herolte and package developer installer plus AnyKernel3
+        env:
+          CROSS_COMPILE: ${{ github.workspace }}/.toolchains/linaro/bin/aarch64-linux-gnu-
+        run: bash scripts/ci/build-g930x.sh
+      - name: Upload flashable ZIPs, config, hashes and build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cronos-G930X-OneUI-Q-KSUN-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish automated test release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag="g930x-ksun-${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cat > artifacts/release-notes.md <<'NOTES'
+          Exynos Galaxy S7 flat G930F/S/L/K, OneUI Q only.
+          KernelSU Next legacy v3.4.0, pinned at b933b1f.
+          Use one inner flashable ZIP: Floyd uses the creator's clean boot template;
+          AnyKernel3 uses the same template with a G930X-specific configuration.
+          Both replace previous ramdisk changes including Magisk. Back up BOOT first.
+          Build-tested; physical-device boot/root/module tests remain outstanding.
+          SUSFS is not included. Optional ext4 sysfs removal ioctl is unsupported.
+          NOTES
+          gh release create "$tag" artifacts/*.zip artifacts/SHA256SUMS artifacts/manifest.json artifacts/kernel.config \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "Cronos G930X KSUN test build ${GITHUB_SHA:0:12}" \
+            --notes-file artifacts/release-notes.md
