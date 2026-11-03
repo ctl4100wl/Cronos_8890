@@ -33,11 +33,14 @@ if [[ ! -f net/wireguard/Kconfig ]]; then
 fi
 make_args=(ARCH=arm64 "CROSS_COMPILE=$CROSS_COMPILE" CCACHE= 'HOSTCFLAGS=-O2 -fcommon')
 make "${make_args[@]}" cronos_g930x_defconfig
-for option in CONFIG_KSU=y CONFIG_MODEL_HEROLTE=y CONFIG_HALL_EVENT_REVERSE=y; do
+for option in CONFIG_KSU=y CONFIG_KSU_MANUAL_HOOK=y CONFIG_MODEL_HEROLTE=y CONFIG_HALL_EVENT_REVERSE=y; do
     grep -qx "$option" .config || { echo "Missing $option" >&2; exit 1; }
 done
 grep -qx '# CONFIG_ALWAYS_PERMISSIVE is not set' .config
-grep -qx '# CONFIG_KPROBES is not set' .config
+if grep -Eq '^CONFIG_KPROBES=[ym]$' .config; then
+    echo 'KPROBES must be disabled for the manual-hook build' >&2
+    exit 1
+fi
 cp .config artifacts/kernel.config
 make -j"${JOBS:-$(nproc)}" "${make_args[@]}" Image dtb.img 2>&1 | tee artifacts/build.log
 [[ -s arch/arm64/boot/Image && -s arch/arm64/boot/dtb.img ]]
