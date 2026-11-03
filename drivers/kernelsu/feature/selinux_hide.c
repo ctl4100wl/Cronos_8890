@@ -1,3 +1,6 @@
+#ifndef __nocfi
+#define __nocfi
+#endif
 #ifdef KSU_KPROBES_HOOK
 #include <linux/completion.h>
 #endif

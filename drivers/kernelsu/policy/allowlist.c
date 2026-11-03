@@ -1,3 +1,5 @@
+#include <linux/namei.h>
+#include <linux/err.h>
 #include <linux/rcupdate.h>
 #include <linux/limits.h>
 #include <linux/rculist.h>
@@ -12,7 +14,10 @@
 #include <linux/printk.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 #include <linux/compiler_types.h>
+#endif
 #include <linux/hashtable.h>
 #include <linux/kref.h>
 
@@ -495,7 +500,8 @@ static void migrate_profile(u32 version, struct app_profile *profile)
         if (profile->allow_su) {
             domain = profile->rp_config.profile.selinux_domain;
             if (strncmp(domain, "u:r:su:s0", domain_len) == 0) {
-                strscpy_pad(domain, KSU_DEFAULT_SELINUX_DOMAIN, domain_len);
+                memset(domain, 0, domain_len);
+                strscpy(domain, KSU_DEFAULT_SELINUX_DOMAIN, domain_len);
                 pr_info("migrated domain of profile: %s\n", profile->key);
             }
         }
