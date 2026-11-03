@@ -1,3 +1,4 @@
+#include <linux/version.h>
 #include <linux/dcache.h>
 #include <linux/errno.h>
 #include <linux/fdtable.h>
@@ -8,12 +9,14 @@
 #include <linux/namei.h>
 #include <linux/proc_ns.h>
 #include <linux/pid.h>
-#include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 #include <linux/sched/task.h>
+#else
+#include <linux/sched.h>
 #endif
 #include <linux/slab.h>
 #include <linux/syscalls.h>
+#include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
 #include <uapi/linux/mount.h>
 #else

@@ -57,8 +57,8 @@ WireGuard no longer download or replace source from inside Kbuild parsing.
 ## Sources and compatibility changes
 
 - Base: `ctl4100wl/Cronos_8890` `cronos_ksu`, `89bd34c780ee321553aaac86f5deca4eb294d4b2`.
-- KernelSU Next: `legacy`, `b933b1f728116a456fbebf27b6a8772a640cdf23`.
-  Tag `v3.4.0-legacy`; version 33318 = 30000 + 3029 commits + upstream legacy offset 289.
+- KernelSU Next: tag `v3.4.0-legacy`, `8af3d4fec33be32fa5d3f8dae4f380fac45bf2cd`.
+  Tag `v3.4.0-legacy`; version 33294 = 30000 + 3005 commits + upstream legacy offset 289.
   This is a legacy snapshot, not a claim to be the mainline v3.4.0 driver.
   Use a compatible KernelSU Next legacy Manager; original KernelSU Manager is
   not the matching client. The Manager is not silently installed by recovery.
@@ -102,3 +102,17 @@ symbol and objcopy tools run directly, and CPP is wrapped only once. The local
 build script requires ccache by default; `USE_CCACHE=0` explicitly disables it.
 
 Reference: https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching
+
+## Manager compatibility correction
+
+Use the official v3.4.0 Manager **33294** (regular or spoofed); both use UAPI 4.
+The kernel now uses the matching **v3.4.0-legacy tag**, not the newer legacy
+branch tip. The first test build used branch tip b933b1f with UAPI 6; that was
+incompatible with the v3.4.0 APK and caused its "Manager too low" warning.
+The APK's literal `%1$d` / `%2$d` placeholders are an upstream warning-format
+bug, not meaningful driver version values. Do not raise a version number to
+bypass the check: `scripts/ci/check-manager-abi.py` compares actual ioctl and
+structure ABIs against the official Manager headers before building.
+
+Manager: https://github.com/KernelSU-Next/KernelSU-Next/releases/tag/v3.4.0
+Matching legacy tag: https://github.com/KernelSU-Next/KernelSU-Next/tree/v3.4.0-legacy

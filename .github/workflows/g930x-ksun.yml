@@ -74,7 +74,8 @@ jobs:
           tag="g930x-ksun-${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           cat > artifacts/release-notes.md <<'NOTES'
           Exynos Galaxy S7 flat G930F/S/L/K, OneUI Q only.
-          KernelSU Next legacy v3.4.0, pinned at b933b1f.
+          KernelSU Next v3.4.0-legacy, pinned at 8af3d4fe (33294, UAPI 4).
+          Matches official v3.4.0 Manager 33294, including the spoofed APK.
           Use one inner flashable ZIP: Floyd uses the creator's clean boot template;
           AnyKernel3 uses the same template with a G930X-specific configuration.
           Both replace previous ramdisk changes including Magisk. Back up BOOT first.

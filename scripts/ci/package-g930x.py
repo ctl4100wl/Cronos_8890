@@ -80,9 +80,12 @@ with tempfile.TemporaryDirectory() as temp:
 manifest = {
     'kernel_commit': revision,
     'device': 'G930F/S/L/K (Exynos herolte)', 'rom': 'OneUI Q',
-    'kernelsu_next': 'legacy b933b1f728116a456fbebf27b6a8772a640cdf23',
+    'kernelsu_next': 'v3.4.0-legacy 8af3d4fec33be32fa5d3f8dae4f380fac45bf2cd',
     'anykernel3': aksha, 'developer_installer_sha256': assets,
     'hardware_tested': False,
+    'manager_uapi_version': 4,
+    'manager_version_code': 33294,
+    'manager_apk': 'https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.0/KernelSU_Next_v3.4.0-spoofed_33294-release.apk',
 }
 (OUT / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
 with (OUT / 'SHA256SUMS').open('w') as sums:

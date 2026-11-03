@@ -6,6 +6,7 @@ export ARCH=arm64 ANDROID_MAJOR_VERSION=p PLATFORM_VERSION=9.0.0
 export LOCALVERSION=-Cronos-G930X-Q-KSUN
 export KBUILD_BUILD_USER=cronos KBUILD_BUILD_HOST=github-actions
 mkdir -p artifacts
+python3 scripts/ci/check-manager-abi.py | tee artifacts/manager-abi.log
 config=arch/arm64/configs/cronos_g930x_defconfig
 trap 'rm -f "$config" arch/arm64/boot/dts/exynos8890.dtsi' EXIT
 # Same order and OneUI-Q HALL setting as the creator's cronos.sh.
