@@ -116,3 +116,17 @@ structure ABIs against the official Manager headers before building.
 
 Manager: https://github.com/KernelSU-Next/KernelSU-Next/releases/tag/v3.4.0
 Matching legacy tag: https://github.com/KernelSU-Next/KernelSU-Next/tree/v3.4.0-legacy
+
+## OneUI Q boot transition correction
+
+The device report captured init failing to execute /data/adb/ksud with EACCES,
+and a security_bounded_transition denial from u:r:init:s0 to u:r:ksu:s0.
+Cronos's existing check_nnp_nosuid exception still resolved the original
+KernelSU u:r:su:s0 domain. Resolve KernelSU Next's u:r:ksu:s0 instead, preserving
+the existing init-only and exact-target checks. SELinux enforcing remains on.
+
+The regression test compiles the actual shipped check_nnp_nosuid function
+with mocked policy calls. It reproduces the old EACCES failure and verifies
+init-to-ksu succeeds after the correction, unrelated transitions remain denied,
+and CONFIG_KSU=n preserves the normal checks. This isolates the observed boot
+denial; a physical full-reboot test is still needed to establish module startup.

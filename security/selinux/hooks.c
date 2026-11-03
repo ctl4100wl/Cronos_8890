@@ -2385,7 +2385,8 @@ static int check_nnp_nosuid(const struct linux_binprm *bprm,
 
 #ifdef CONFIG_KSU
 	if (!ksu_sid) {
-            security_secctx_to_secid("u:r:su:s0", strlen("u:r:su:s0"), &ksu_sid);
+            /* KernelSU Next creates the ksu domain, not the legacy su domain. */
+            security_secctx_to_secid("u:r:ksu:s0", strlen("u:r:ksu:s0"), &ksu_sid);
 	}
 	error = security_secid_to_secctx(old_tsec->sid, &secdata, &seclen);
 	if (!error) {

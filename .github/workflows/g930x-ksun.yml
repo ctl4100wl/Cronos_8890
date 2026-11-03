@@ -76,6 +76,7 @@ jobs:
           Exynos Galaxy S7 flat G930F/S/L/K, OneUI Q only.
           KernelSU Next v3.4.0-legacy, pinned at 8af3d4fe (33294, UAPI 4).
           Matches official v3.4.0 Manager 33294, including the spoofed APK.
+          Fixes the OneUI Q init-to-ksu SELinux bounded-transition denial that prevented ksud startup on full reboot.
           Use one inner flashable ZIP: Floyd uses the creator's clean boot template;
           AnyKernel3 uses the same template with a G930X-specific configuration.
           Both replace previous ramdisk changes including Magisk. Back up BOOT first.
