@@ -1,3 +1,6 @@
+#if defined(CONFIG_KSU_SUSFS)
+#include <linux/susfs_def.h>
+#endif
 #include <linux/version.h>
 #include "hook/patch_memory.h"
 #include "infra/symbol_resolver.h"
@@ -223,6 +226,9 @@ int escape_with_root_profile(void)
     setup_groups(profile, cred);
     setup_selinux(profile->selinux_domain, cred);
 
+#ifdef CONFIG_KSU_SUSFS
+    current->susfs_task_state &= ~TASK_STRUCT_NON_ROOT_USER_APP_PROC;
+#endif
     commit_creds(cred);
 
     disable_seccomp();
@@ -257,6 +263,9 @@ void escape_to_root_for_init(void)
     }
 
     setup_selinux(KERNEL_SU_CONTEXT, cred);
+#ifdef CONFIG_KSU_SUSFS
+    current->susfs_task_state &= ~TASK_STRUCT_NON_ROOT_USER_APP_PROC;
+#endif
     commit_creds(cred);
 }
 

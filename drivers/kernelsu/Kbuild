@@ -185,3 +185,5 @@ ccflags-y += -Wno-strict-prototypes -Wno-missing-prototypes
 ccflags-y += -Wno-declaration-after-statement -Wno-unused-function -Wno-unused-variable
 
 # Keep a new line here!! Because someone may append config
+
+kernelsu-$(CONFIG_KSU_SUSFS) += feature/susfs.o

@@ -1,3 +1,6 @@
+#if defined(CONFIG_KSU_SUSFS_TRY_UMOUNT)
+#include <linux/susfs.h>
+#endif
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/task_work.h>
@@ -105,6 +108,9 @@ static void umount_tw_func(struct callback_head *cb)
 	const struct cred *saved = override_creds(ksu_cred);
 
     struct mount_entry *entry;
+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+    susfs_try_umount(current_uid().val);
+#endif
     down_read(&mount_list_lock);
     list_for_each_entry(entry, &mount_list, list) {
         pr_info("%s: unmounting: %s flags: 0x%x\n", __func__, entry->umountable, entry->flags);
@@ -187,3 +193,11 @@ void __exit ksu_kernel_umount_exit(void)
 {
 	ksu_unregister_feature_handler(KSU_FEATURE_KERNEL_UMOUNT);
 }
+
+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+void ksu_try_umount(const char *mnt, bool check_mnt, int flags, uid_t uid)
+{
+	/* Called by SUSFS under the existing KSU credential override. */
+	try_umount(mnt, flags);
+}
+#endif

@@ -1,3 +1,6 @@
+#if defined(CONFIG_KSU_SUSFS)
+#include <linux/susfs.h>
+#endif
 #include <linux/export.h>
 #include <linux/fs.h>
 #include <linux/kobject.h>
@@ -119,6 +122,9 @@ int __init kernelsu_init(void)
         return -ENOSYS;
     }
 
+#ifdef CONFIG_KSU_SUSFS
+	susfs_init();
+#endif
 	ksu_feature_init();
 
 	ksu_sulog_init();

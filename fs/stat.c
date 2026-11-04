@@ -14,9 +14,16 @@
 #include <linux/security.h>
 #include <linux/syscalls.h>
 #include <linux/pagemap.h>
+#if defined(CONFIG_KSU_SUSFS_SUS_KSTAT) || defined(CONFIG_KSU_SUSFS_SUS_MOUNT)
+#include <linux/susfs_def.h>
+#endif
 
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
+
+#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
+extern void susfs_sus_ino_for_generic_fillattr(unsigned long ino, struct kstat *stat);
+#endif
 
 void generic_fillattr(struct inode *inode, struct kstat *stat)
 {
@@ -33,6 +40,11 @@ void generic_fillattr(struct inode *inode, struct kstat *stat)
 	stat->ctime = inode->i_ctime;
 	stat->blksize = (1 << inode->i_blkbits);
 	stat->blocks = inode->i_blocks;
+#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
+	if ((current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) &&
+	    (inode->i_state & INODE_STATE_SUS_KSTAT))
+		susfs_sus_ino_for_generic_fillattr(inode->i_ino, stat);
+#endif
 }
 
 EXPORT_SYMBOL(generic_fillattr);

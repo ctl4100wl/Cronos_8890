@@ -1,0 +1,6 @@
+id=cronos_susfs155
+name=Cronos S7 SUSFS 1.5.5 tools
+version=v1.5.5-cronos1
+versionCode=10500501
+author=simonpunk, Cronos integration
+description=Matching arm64 userspace controls for the Cronos G930X SUSFS v1.5.5 kernel. No attestation engine or Zygisk implementation is included.

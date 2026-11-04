@@ -1,3 +1,6 @@
+#if defined(CONFIG_KSU_SUSFS)
+#include <linux/susfs_def.h>
+#endif
 #include <linux/compiler.h>
 #include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
@@ -31,6 +34,13 @@ int ksu_handle_setresuid(uid_t old_uid, uid_t new_uid)
     // we rely on the fact that zygote always call setresuid(3) with same uids
 
     pr_info("handle_setresuid from %d to %d\n", old_uid, new_uid);
+#ifdef CONFIG_KSU_SUSFS
+    /* Clear inherited hiding state for explicitly allowed apps and Manager. */
+    current->susfs_task_state &= ~TASK_STRUCT_NON_ROOT_USER_APP_PROC;
+    if (new_uid >= 10000 && !is_uid_manager(new_uid) &&
+        !ksu_is_allow_uid_for_current(new_uid))
+        current->susfs_task_state |= TASK_STRUCT_NON_ROOT_USER_APP_PROC;
+#endif
 
     if (unlikely(is_uid_manager(new_uid))) {
 

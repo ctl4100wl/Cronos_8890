@@ -81,9 +81,15 @@ jobs:
           AnyKernel3 uses the same template with a G930X-specific configuration.
           Both replace previous ramdisk changes including Magisk. Back up BOOT first.
           Build-tested; physical-device boot/root/module tests remain outstanding.
-          SUSFS is not included. Optional ext4 sysfs removal ioctl is unsupported.
+          SUSFS v1.5.5 non-GKI backport is included. Install Cronos-S7-SUSFS155-Tools.zip
+          through KernelSU Next AFTER booting this kernel. This provides the matching
+          v1.5.5 CLI; newer v2 SUSFS tools/modules use an incompatible interface.
+          Deprecated sus_su and overlayfs stat spoofing are not enabled.
+          Optional ext4 sysfs removal ioctl remains unsupported.
+          AlwaysStrong and one working Zygisk implementation remain separate modules.
+          Play Integrity results have not been tested on hardware.
           NOTES
           gh release create "$tag" artifacts/*.zip artifacts/SHA256SUMS artifacts/manifest.json artifacts/kernel.config \
             --target "$GITHUB_SHA" --prerelease \
-            --title "Cronos G930X KSUN test build ${GITHUB_SHA:0:12}" \
+            --title "Cronos G930X KSUN + SUSFS 1.5.5 test build ${GITHUB_SHA:0:12}" \
             --notes-file artifacts/release-notes.md

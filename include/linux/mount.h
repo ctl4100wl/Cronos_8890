@@ -69,6 +69,9 @@ struct vfsmount {
 	struct mount *bp_mount;	/* pointer to mount*/
 #endif
 	int mnt_flags;
+#ifdef CONFIG_KSU_SUSFS
+	u64 susfs_mnt_id_backup;
+#endif
 	void *data;
 };
 

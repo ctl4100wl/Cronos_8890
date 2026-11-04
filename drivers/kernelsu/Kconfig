@@ -73,3 +73,79 @@ config KSU_SYSCALL_TABLE_HOOK
 endchoice
 
 endmenu
+
+menu "SUSFS v1.5.5 non-GKI backport"
+config KSU_SUSFS
+	bool "SUSFS filesystem and mount hiding"
+	depends on KSU=y && !RKP_NS_PROT
+	default n
+	help
+	  Cronos 3.18 port of simonpunk's kernel-4.9 SUSFS v1.5.5.
+	  Use the matching v1.5.5 arm64 ksu_susfs tool, not a v2 tool.
+
+config KSU_SUSFS_SUS_PATH
+	bool "sus path "
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_SUS_MOUNT
+	bool "sus mount "
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
+	bool "auto add sus ksu default mount "
+	depends on KSU_SUSFS_SUS_MOUNT
+	default y
+
+config KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT
+	bool "auto add sus bind mount "
+	depends on KSU_SUSFS_SUS_MOUNT
+	default y
+
+config KSU_SUSFS_SUS_KSTAT
+	bool "sus kstat "
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_TRY_UMOUNT
+	bool "try umount "
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
+	bool "auto add try umount for bind mount "
+	depends on KSU_SUSFS_TRY_UMOUNT && KSU_SUSFS_SUS_MOUNT
+	default y
+
+config KSU_SUSFS_SPOOF_UNAME
+	bool "spoof uname "
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_ENABLE_LOG
+	bool "enable log "
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+	bool "hide ksu susfs symbols "
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+	bool "spoof cmdline or bootconfig "
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_OPEN_REDIRECT
+	bool "open redirect "
+	depends on KSU_SUSFS
+	default y
+
+config KSU_SUSFS_HAS_MAGIC_MOUNT
+	bool "has magic mount "
+	depends on KSU_SUSFS
+	default y
+
+endmenu

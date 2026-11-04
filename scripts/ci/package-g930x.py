@@ -28,7 +28,7 @@ for name, digest in assets.items():
         raise SystemExit(f'Developer installer asset changed: {name}')
 revision = os.environ.get('GITHUB_SHA') or subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
 sha = revision[:12]
-name = f'Cronos-G930X-OneUI-Q-KSUN-{sha}'
+name = f'Cronos-G930X-OneUI-Q-KSUN-SUSFS155-{sha}'
 
 def write_zip(target, files):
     with zipfile.ZipFile(target, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
@@ -77,12 +77,32 @@ with tempfile.TemporaryDirectory() as temp:
     for license in akrepo.glob('LICENSE*'):
         files.append((license.name, license.read_bytes(), False))
     write_zip(OUT / f'{name}-AnyKernel3.zip', files)
+# Same upstream v1.5.5 arm64 CLI as this kernel's legacy PRCTL ABI.
+susfs_revision = '41ba0b533b8524a0ba95a5952506a75f17355450'
+tool_path = OUT / 'ksu_susfs'
+compiler = os.environ['CROSS_COMPILE'] + 'gcc'
+subprocess.run([compiler, '-std=gnu99', '-static', '-O2', '-Wl,--build-id=none',
+                str(ROOT / 'tools/susfs/main.c'), '-o', str(tool_path)], check=True)
+subprocess.run([os.environ['CROSS_COMPILE'] + 'strip', str(tool_path)], check=True)
+program_headers = subprocess.check_output([os.environ['CROSS_COMPILE'] + 'readelf', '-l', str(tool_path)], text=True)
+if 'INTERP' in program_headers:
+    raise SystemExit('SUSFS tool must not depend on an Android/system dynamic linker')
+tool = tool_path.read_bytes()
+susfs_tool_sha256 = hashlib.sha256(tool).hexdigest()
+files = [('ksu_susfs', tool, True)]
+for path in sorted((ROOT / 'Cronos/susfs-tools').iterdir()):
+    if path.is_file():
+        files.append((path.name, path.read_bytes(), path.suffix == '.sh'))
+write_zip(OUT / 'Cronos-S7-SUSFS155-Tools.zip', files)
 manifest = {
     'kernel_commit': revision,
     'device': 'G930F/S/L/K (Exynos herolte)', 'rom': 'OneUI Q',
     'kernelsu_next': 'v3.4.0-legacy 8af3d4fec33be32fa5d3f8dae4f380fac45bf2cd',
     'anykernel3': aksha, 'developer_installer_sha256': assets,
     'hardware_tested': False,
+    'susfs_version': 'v1.5.5',
+    'susfs_source': f'simonpunk/susfs4ksu kernel-4.9 {susfs_revision}',
+    'susfs_tool_sha256': susfs_tool_sha256,
     'manager_uapi_version': 4,
     'manager_version_code': 33294,
     'manager_apk': 'https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.0/KernelSU_Next_v3.4.0-spoofed_33294-release.apk',
