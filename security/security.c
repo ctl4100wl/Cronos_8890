@@ -988,12 +988,21 @@ int security_task_wait(struct task_struct *p)
 	return call_int_hook(task_wait, 0, p);
 }
 
+#ifdef CONFIG_KSU_SUSFS
+extern int ksu_susfs_prctl(int, unsigned long, unsigned long, unsigned long, unsigned long);
+#endif
+
 int security_task_prctl(int option, unsigned long arg2, unsigned long arg3,
 			 unsigned long arg4, unsigned long arg5)
 {
 	int thisrc;
 	int rc = -ENOSYS;
 	struct security_hook_list *hp;
+#ifdef CONFIG_KSU_SUSFS
+	thisrc = ksu_susfs_prctl(option, arg2, arg3, arg4, arg5);
+	if (thisrc != -ENOSYS)
+		return thisrc;
+#endif
 
 	list_for_each_entry(hp, &security_hook_heads.task_prctl, list) {
 		thisrc = hp->hook.task_prctl(option, arg2, arg3, arg4, arg5);

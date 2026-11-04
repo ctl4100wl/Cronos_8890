@@ -214,7 +214,7 @@ VPATH		:= $(srctree)$(if $(KBUILD_EXTMOD),:$(KBUILD_EXTMOD))
 
 export srctree objtree VPATH
 
-CCACHE := ccache
+CCACHE ?= $(shell command -v ccache 2>/dev/null)
 
 # SUBARCH tells the usermode build what the underlying arch is.  That is set
 # first, and if a usermode build is happening, the "ARCH=um" on the command
@@ -354,15 +354,15 @@ $(srctree)/scripts/Kbuild.include: ;
 include $(srctree)/scripts/Kbuild.include
 
 # Make variables (CC, etc...)
-AS		= $(CCACHE) $(CROSS_COMPILE)as
-LD		= $(CCACHE) $(CROSS_COMPILE)ld
+AS		= $(CROSS_COMPILE)as
+LD		= $(CROSS_COMPILE)ld
 CC		= $(CCACHE) $(CROSS_COMPILE)gcc
-CPP		= $(CCACHE) $(CC) -E
-AR		= $(CCACHE) $(CROSS_COMPILE)ar
-NM		= $(CCACHE) $(CROSS_COMPILE)nm
-STRIP		= $(CCACHE) $(CROSS_COMPILE)strip
-OBJCOPY		= $(CCACHE) $(CROSS_COMPILE)objcopy
-OBJDUMP		= $(CCACHE) $(CROSS_COMPILE)objdump
+CPP		= $(CC) -E
+AR		= $(CROSS_COMPILE)ar
+NM		= $(CROSS_COMPILE)nm
+STRIP		= $(CROSS_COMPILE)strip
+OBJCOPY		= $(CROSS_COMPILE)objcopy
+OBJDUMP		= $(CROSS_COMPILE)objdump
 AWK		= awk
 GENKSYMS	= scripts/genksyms/genksyms
 INSTALLKERNEL  := installkernel

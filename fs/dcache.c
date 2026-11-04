@@ -1,3 +1,6 @@
+#if defined(CONFIG_KSU_SUSFS_SUS_PATH)
+#include <linux/susfs_def.h>
+#endif
 /*
  * fs/dcache.c
  *
@@ -2210,6 +2213,11 @@ seqretry:
 		 * and if we end up with a successful lookup, we actually
 		 * want to exit RCU lookup anyway.
 		 */
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+		if (dentry->d_inode && (dentry->d_inode->i_state & INODE_STATE_SUS_PATH) &&
+		    (current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC))
+			continue;
+#endif
 		seq = raw_seqcount_begin(&dentry->d_seq);
 		if (dentry->d_parent != parent)
 			continue;
@@ -2316,6 +2324,12 @@ struct dentry *__d_lookup(const struct dentry *parent, const struct qstr *name)
 
 		if (dentry->d_name.hash != hash)
 			continue;
+
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+		if (dentry->d_inode && unlikely(dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
+			continue;
+		}
+#endif
 
 		spin_lock(&dentry->d_lock);
 		if (dentry->d_parent != parent)

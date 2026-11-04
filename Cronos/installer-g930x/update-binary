@@ -1,0 +1,46 @@
+#!/sbin/sh
+# Derived from corsicanu's Cronos V8.1 Floyd installer, Copyright 2020-2022.
+# CC BY-NC-SA 4.0; see Cronos/kernelzip/LICENSE.
+OUTFD="/proc/self/fd/$2"
+[ "$2" = 0 ] && OUTFD=/dev/null
+ZIP=$3
+ui_print() { printf 'ui_print %s\nui_print\n' "$*" > "$OUTFD"; }
+abort() { ui_print "ERROR: $*"; exit 1; }
+# Check the bootloader, not only a spoofable ROM device name.
+device=$(getprop ro.bootloader)
+[ -n "$device" ] || device=$(sed -n 's/.*androidboot.bootloader=\([^ ]*\).*/\1/p' /proc/cmdline)
+case "$device" in G930F*|G930S*|G930L*|G930K*) ;; *) abort "Only Exynos S7 G930F/S/L/K supported ($device)" ;; esac
+ui_print 'Cronos G930X / KernelSU Next legacy Installer'
+ui_print 'OneUI Q only. Replaces Magisk/old kernel ramdisk with the developer template.'
+WORK=/tmp/cronos-g930x
+rm -rf "$WORK"
+mkdir -p "$WORK" || abort 'Cannot create work directory'
+unzip -o "$ZIP" 'floyd/*' -d "$WORK" >/dev/null || abort 'Cannot extract installer'
+cd "$WORK/floyd" || abort 'Missing payload'
+chmod 755 tools/* || abort 'Cannot prepare tools'
+bb=$WORK/floyd/tools/busybox
+boot=
+for candidate in /dev/block/platform/155a0000.ufs/by-name/BOOT /dev/block/platform/*/by-name/BOOT /dev/block/by-name/BOOT; do
+    [ -b "$candidate" ] && { boot=$candidate; break; }
+done
+[ -n "$boot" ] || abort 'BOOT partition not found'
+for payload in G930X-kernel G930X-dtb ramdisk.img; do
+    [ -s "$payload" ] || abort "Missing $payload"
+done
+# Build and validate entirely in /tmp before the single BOOT write.
+mkdir image || abort 'Cannot create image directory'
+cp ramdisk.img image/old-boot.img || abort 'Cannot stage developer boot template'
+cd image || abort 'Cannot enter image directory'
+"../tools/magiskboot" unpack old-boot.img || abort 'Cannot unpack boot template'
+cp ../G930X-kernel kernel || abort 'Cannot stage kernel'
+cp ../G930X-dtb extra || abort 'Cannot stage Samsung DTB'
+"../tools/magiskboot" repack -n old-boot.img || abort 'Cannot repack boot'
+[ -s new-boot.img ] || abort 'Empty boot image'
+size=$("$bb" stat -c %s new-boot.img)
+limit=$("$bb" blockdev --getsize64 "$boot") || abort 'Cannot read BOOT size'
+[ "$size" -le "$limit" ] || abort 'Image exceeds BOOT partition'
+"$bb" dd if=new-boot.img of="$boot" bs=4096 || abort 'BOOT write failed'
+sync
+cd /tmp
+rm -rf "$WORK"
+ui_print 'Cronos G930X installed. Use KernelSU Next Manager.'

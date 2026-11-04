@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+: "${CROSS_COMPILE:?Set CROSS_COMPILE to Linaro 4.9.4 aarch64-linux-gnu- prefix}"
+export ARCH=arm64 ANDROID_MAJOR_VERSION=p PLATFORM_VERSION=9.0.0
+export LOCALVERSION=-Cronos-G930X-Q-KSUN
+export KBUILD_BUILD_USER=cronos KBUILD_BUILD_HOST=github-actions
+mkdir -p artifacts
+python3 scripts/ci/check-susfs-control.py | tee artifacts/susfs-control.log
+python3 scripts/ci/check-manager-abi.py | tee artifacts/manager-abi.log
+python3 scripts/ci/check-ksun-boot-transition.py | tee artifacts/boot-transition.log
+config=arch/arm64/configs/cronos_g930x_defconfig
+trap 'rm -f "$config" arch/arm64/boot/dts/exynos8890.dtsi' EXIT
+# Same order and OneUI-Q HALL setting as the creator's cronos.sh.
+cat arch/arm64/configs/{exynos8890,hero,oneui,cronos}_defconfig > "$config"
+cat >> "$config" <<'CONFIG'
+CONFIG_KSU=y
+CONFIG_KSU_MANUAL_HOOK=y
+CONFIG_KSU_SUSFS=y
+# CONFIG_KSU_DEBUG is not set
+# CONFIG_KPROBES is not set
+# CONFIG_ALWAYS_PERMISSIVE is not set
+CONFIG_HALL_EVENT_REVERSE=y
+CONFIG
+cp arch/arm64/boot/exynos8890_Oneui.dtsi arch/arm64/boot/dts/exynos8890.dtsi
+# WireGuard is absent from the repository; obtain a fixed release rather than
+# allowing Kbuild to download and replace sources while parsing makefiles.
+if [[ ! -f net/wireguard/Kconfig ]]; then
+    wg=$(mktemp -d)
+    git -C "$wg" init -q
+    git -C "$wg" remote add origin https://github.com/WireGuard/wireguard-linux-compat.git
+    git -C "$wg" fetch --depth=1 origin 18fbcd68a35a892527345dc5679d0b2d860ee004
+    git -C "$wg" checkout --detach FETCH_HEAD
+    mkdir -p net/wireguard
+    cp -a "$wg/src/." net/wireguard/
+    rm -rf "$wg"
+fi
+cache_prefix=
+if [[ "${USE_CCACHE:-1}" == 1 ]]; then
+    cache_prefix=$(command -v ccache) || { echo 'Install ccache or set USE_CCACHE=0' >&2; exit 1; }
+    export CCACHE_DIR="${CCACHE_DIR:-$PWD/.ccache}"
+    export CCACHE_BASEDIR="$PWD"
+    export CCACHE_COMPILERCHECK=content
+    export CCACHE_NOHASHDIR=true
+    mkdir -p "$CCACHE_DIR"
+    ccache --max-size=2G
+    ccache --set-config=compression=true
+    ccache --zero-stats
+fi
+make_args=(ARCH=arm64 "CROSS_COMPILE=$CROSS_COMPILE" "CCACHE=$cache_prefix" 'HOSTCFLAGS=-O2 -fcommon')
+make "${make_args[@]}" cronos_g930x_defconfig
+for option in CONFIG_KSU_SUSFS=y CONFIG_KSU=y CONFIG_KSU_MANUAL_HOOK=y CONFIG_MODEL_HEROLTE=y CONFIG_HALL_EVENT_REVERSE=y; do
+    grep -qx "$option" .config || { echo "Missing $option" >&2; exit 1; }
+done
+grep -qx '# CONFIG_ALWAYS_PERMISSIVE is not set' .config
+if grep -Eq '^CONFIG_KPROBES=[ym]$' .config; then
+    echo 'KPROBES must be disabled for the manual-hook build' >&2
+    exit 1
+fi
+cp .config artifacts/kernel.config
+make -j"${JOBS:-$(nproc)}" "${make_args[@]}" Image dtb.img 2>&1 | tee artifacts/build.log
+[[ -s arch/arm64/boot/Image && -s arch/arm64/boot/dtb.img ]]
+# Verify real linked implementations, not just enabled Kconfig symbols.
+"${CROSS_COMPILE}nm" vmlinux | awk '{print $3}' > artifacts/kernel-symbols.txt
+for symbol in susfs_init ksu_susfs_prctl susfs_add_sus_path susfs_add_sus_mount susfs_add_sus_kstat susfs_try_umount susfs_spoof_uname susfs_spoof_cmdline_or_bootconfig susfs_get_redirected_path; do
+    grep -qx "$symbol" artifacts/kernel-symbols.txt || { echo "Missing linked $symbol" >&2; exit 1; }
+done
+python3 scripts/ci/package-g930x.py

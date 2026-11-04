@@ -1,0 +1,95 @@
+name: Cronos G930X KernelSU Next
+on:
+  push:
+    branches: [cronos_ksu, 'codex/g930x-ksun']
+  pull_request:
+    branches: [cronos_ksu]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: g930x-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libssl-dev libelf-dev python3 ccache
+      - name: Checkout creator-compatible Linaro 4.9.4
+        uses: actions/checkout@v4
+        with:
+          repository: ryan-andri/aarch64-linaro-linux-gnu-4.9
+          ref: 0d26f997569c21965380406733378e3546279f18
+          path: .toolchains/linaro
+          persist-credentials: false
+      - name: Restore compiler cache
+        id: ccache
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: 5
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-${{ runner.arch }}-g930x-linaro494-0d26f99-v1-${{ hashFiles('arch/arm64/configs/*defconfig', 'scripts/ci/build-g930x.sh', 'Makefile') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-g930x-linaro494-0d26f99-v1-${{ hashFiles('arch/arm64/configs/*defconfig', 'scripts/ci/build-g930x.sh', 'Makefile') }}-
+            ${{ runner.os }}-${{ runner.arch }}-g930x-linaro494-0d26f99-v1-
+      - name: Build herolte and package developer installer plus AnyKernel3
+        env:
+          CROSS_COMPILE: ${{ github.workspace }}/.toolchains/linaro/bin/aarch64-linux-gnu-
+        run: bash scripts/ci/build-g930x.sh
+      - name: Report compiler cache statistics
+        if: always()
+        run: |
+          mkdir -p artifacts
+          if command -v ccache >/dev/null; then
+            CCACHE_DIR="$GITHUB_WORKSPACE/.ccache" ccache --show-stats | tee artifacts/ccache-stats.txt
+          fi
+      - name: Save compiler cache
+        if: always() && !cancelled() && steps.ccache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ${{ steps.ccache.outputs.cache-primary-key }}
+      - name: Upload flashable ZIPs, config, hashes and build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cronos-G930X-OneUI-Q-KSUN-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish automated test release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          tag="g930x-ksun-${GITHUB_SHA:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cat > artifacts/release-notes.md <<'NOTES'
+          Exynos Galaxy S7 flat G930F/S/L/K, OneUI Q only.
+          KernelSU Next v3.4.0-legacy, pinned at 8af3d4fe (33294, UAPI 4).
+          Matches official v3.4.0 Manager 33294, including the spoofed APK.
+          Fixes the OneUI Q init-to-ksu SELinux bounded-transition denial that prevented ksud startup on full reboot.
+          Use one inner flashable ZIP: Floyd uses the creator's clean boot template;
+          AnyKernel3 uses the same template with a G930X-specific configuration.
+          Both replace previous ramdisk changes including Magisk. Back up BOOT first.
+          Build-tested; physical-device boot/root/module tests remain outstanding.
+          SUSFS v1.5.5 non-GKI backport is included. Install Cronos-S7-SUSFS155-Tools.zip
+          through KernelSU Next AFTER booting this kernel. This provides the matching
+          v1.5.5 CLI; newer v2 SUSFS tools/modules use an incompatible interface.
+          Deprecated sus_su and overlayfs stat spoofing are not enabled.
+          Optional ext4 sysfs removal ioctl remains unsupported.
+          AlwaysStrong and one working Zygisk implementation remain separate modules.
+          Play Integrity results have not been tested on hardware.
+          NOTES
+          gh release create "$tag" artifacts/*.zip artifacts/SHA256SUMS artifacts/manifest.json artifacts/kernel.config \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "Cronos G930X KSUN + SUSFS 1.5.5 test build ${GITHUB_SHA:0:12}" \
+            --notes-file artifacts/release-notes.md
